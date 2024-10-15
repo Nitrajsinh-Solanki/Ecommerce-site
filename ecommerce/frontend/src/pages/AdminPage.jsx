@@ -112,6 +112,13 @@ const AdminPage = () => {
 
     const handleDelete = async (userId) => {
         const token = localStorage.getItem('token');
+        const adminId = JSON.parse(atob(token.split('.')[1])).id; 
+    
+        if (userId === adminId) {
+            alert("You cannot delete yourself.");
+            return;
+        }
+    
         try {
             await axios.delete(`http://localhost:5000/api/admin/users/${userId}`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -122,11 +129,12 @@ const AdminPage = () => {
             setError('Failed to delete user. Please try again later.');
         }
     };
-
+    
     const confirmDelete = () => {
-        handleDelete(userIdToDelete); 
+        handleDelete(userIdToDelete);
         setDeleteConfirmDialogOpen(false);
     };
+   
 
     const handleEditRole = (userId) => {
         setCurrentUserId(userId);
