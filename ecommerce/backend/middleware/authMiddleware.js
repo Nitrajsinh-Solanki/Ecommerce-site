@@ -30,3 +30,11 @@ exports.sellerMiddleware = (req, res, next) => {
   }
   next();
 };
+
+
+exports.shopperMiddleware = (req, res, next) => {
+  if (req.user.role !== 'Shopper') {
+    return res.status(403).json({ message: 'Access denied, shoppers only' });
+  }
+  next();
+};

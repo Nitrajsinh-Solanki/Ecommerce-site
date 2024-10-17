@@ -13,11 +13,12 @@ const ProductPage = () => {
   const dispatch = useDispatch();
   const { products, status, error: productError } = useSelector((state) => state.products);
   const { user } = useSelector((state) => state.user);
+  
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [showConfetti, setShowConfetti] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [showRoleDialog, setShowRoleDialog] = useState(false); // NEW STATE
 
   const productRefs = useRef([]);
 
@@ -34,12 +35,10 @@ const ProductPage = () => {
         console.error('Error fetching products:', error);
       }
     };
-
     getProducts();
   }, [dispatch]);
 
   useEffect(() => {
-   
     productRefs.current.forEach((el, index) => {
       gsap.fromTo(
         el,
@@ -49,64 +48,49 @@ const ProductPage = () => {
           y: 0,
           scrollTrigger: {
             trigger: el,
-            start: 'top 75%', 
-            toggleActions: 'play none none none', 
+            start: 'top 75%',
+            toggleActions: 'play none none none',
           },
         }
       );
     });
   }, [products]);
 
-  const handleSearch = (query) => {
-    setSearchQuery(query); 
-  };
+  const handleSearch = (query) => setSearchQuery(query);
 
   const handleOrder = (productId) => {
     if (!user || !user.token) {
-      alert('You must be logged in to place an order.');
+      setShowRoleDialog(true); user
+      return;
+    }
+    if (user.role !== 'Shopper') {
+      setShowRoleDialog(true);
       return;
     }
     setSelectedProduct(productId);
   };
 
   const confirmOrder = async () => {
-    if (!user || !user.token) {
-      alert('You must be logged in to place an order.');
-      return;
-    }
-
     try {
       const selectedProductData = products.find((product) => product._id === selectedProduct);
-      if (!selectedProductData) {
-        console.error('Product not found in the products array:', products);
-        throw new Error('Product not found');
-      }
+      if (!selectedProductData) throw new Error('Product not found');
 
       const orderData = {
         user: user._id,
-        products: [{
-          productId: selectedProductData._id,
-          quantity: quantity,
-        }],
+        products: [{ productId: selectedProductData._id, quantity }],
         totalAmount: selectedProductData.price * quantity,
       };
 
       const response = await axios.post(
         'http://localhost:5000/api/orders/place',
         orderData,
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${user.token}` } }
       );
 
       if (response.data) {
-        alert('Order placed successfully!');
         setShowConfetti(true);
-        setTimeout(() => {
-          setShowConfetti(false);
-        }, 7000);
+        setTimeout(() => setShowConfetti(false), 7000);
+        alert('Order placed successfully!');
       }
     } catch (error) {
       console.error('Error placing order:', error);
@@ -117,14 +101,13 @@ const ProductPage = () => {
     }
   };
 
- 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div>
-      <Navbar onSearch={handleSearch} /> 
+      <Navbar onSearch={handleSearch} />
 
       {showConfetti && (
         <Confetti
@@ -135,9 +118,11 @@ const ProductPage = () => {
           recycle={false}
         />
       )}
+
       <div className="text-center py-4 text-white">
         <h1 className="text-3xl text-gray-900 font-bold">E-commerce site product page</h1>
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-6">
         {status === 'loading' && <p>Loading products...</p>}
         {status === 'failed' && <p className="text-red-500">{productError}</p>}
@@ -164,25 +149,40 @@ const ProductPage = () => {
             </div>
           ))}
       </div>
+
+      {showRoleDialog && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70">
+    <div className="bg-white p-6 rounded-lg shadow-lg">
+      <h2 className="text-lg font-bold mb-4">Action Not Allowed</h2>
+      <p className="mb-6">
+        This action is only available for shoppers. <br/>Please log in with a shopper account to proceed.
+      </p>
+      <div className="flex justify-end">
+        <button
+          onClick={() => setShowRoleDialog(false)}
+          className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
+
       {selectedProduct && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <h2 className="text-lg font-bold">Confirm Order</h2>
-          
-            {products && selectedProduct && (
-              <>
-                {products.map((product) => {
-                  if (product._id === selectedProduct) {
-                    return (
-                      <div key={product._id}>
-                        <p>Product Name: {product.name}</p>
-                        <p>Total Amount: ${product.price * quantity}</p>
-                      </div>
-                    );
-                  }
-                  return null;
-                })}
-              </>
+            {products.map((product) =>
+              product._id === selectedProduct ? (
+                <div key={product._id}>
+                  <p>Product Name: {product.name}</p>
+                  <p>Total Amount: ${product.price * quantity}</p>
+                </div>
+              ) : null
             )}
             <label className="block my-4">
               Quantity:
@@ -191,7 +191,7 @@ const ProductPage = () => {
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 className="border border-gray-300 p-2 rounded w-full"
-                min="1" 
+                min="1"
               />
             </label>
             <button

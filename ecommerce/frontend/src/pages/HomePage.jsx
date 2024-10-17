@@ -29,7 +29,6 @@ const HomePage = () => {
     fetchProducts();
   }, []);
 
-  // Update filtered products based on search query
   const handleSearch = (query) => {
     if (query) {
       const filtered = products.filter(product =>

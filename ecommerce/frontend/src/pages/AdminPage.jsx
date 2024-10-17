@@ -95,21 +95,40 @@ const AdminPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const token = localStorage.getItem('token');
+    
+        if (!token) {
+            setError('Authentication token not found. Please log in.');
+            return;
+        }
+    
+        if (!formData.name || !formData.email || !formData.password || !formData.role) {
+            setError('All fields are required.');
+            return;
+        }
+    
+        // Ensure role matches backend expectations (e.g., 'Admin', 'Seller', 'Shopper')
+        const validRoles = ['Admin', 'Seller', 'Shopper'];
+        if (!validRoles.includes(formData.role)) {
+            setError(`Invalid role. Please select one of: ${validRoles.join(', ')}`);
+            return;
+        }
+    
         try {
             await axios.post(
                 'http://localhost:5000/api/admin/users/add',
-                formData,
+                formData, // No need for normalization here.
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             fetchUsers();
             setAddUserFormVisible(false);
             setFormData({ name: '', email: '', password: '', role: 'Shopper' });
         } catch (error) {
-            console.error('Error adding user:', error);
-            setError('Failed to add user. Please try again later.');
+            console.error('Error adding user:', error.response?.data || error.message);
+            setError(error.response?.data?.message || 'Failed to add user. Please try again later.');
         }
     };
-
+    
+    
     const handleDelete = async (userId) => {
         const token = localStorage.getItem('token');
         const adminId = JSON.parse(atob(token.split('.')[1])).id; 
